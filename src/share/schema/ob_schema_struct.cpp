@@ -161,6 +161,8 @@ int ObSysTableChecker::init()
     LOG_WARN("fail to init table id map", K(ret));
   } else if (OB_FAIL(init_sys_table_name_map())) {
     LOG_WARN("fail to init table name map", K(ret));
+  } else if (OB_FAIL(init_sys_table_ids())) {
+    LOG_WARN("fail to init sys table ids", K(ret));
   } else {
     is_inited_ = true;
   }
@@ -240,6 +242,21 @@ int ObSysTableChecker::init_sys_table_name_map()
           LOG_WARN("fail to get table name array", K(ret), K(key), K(table));
         }
       }
+    }
+  }
+  return ret;
+}
+
+int ObSysTableChecker::init_sys_table_ids()
+{
+  int ret = OB_SUCCESS;
+  ObTableSchema schema;
+  for (int64_t i = 0; OB_SUCC(ret) && NULL != sys_table_schema_creators[i]; ++i) {
+    schema.reset();
+    if (OB_FAIL(sys_table_schema_creators[i](schema))) {
+      LOG_WARN("create table schema failed", KR(ret));
+    } else if (OB_FAIL(sys_table_ids_.push_back(schema.get_table_id()))) {
+      LOG_WARN("push_back failed", KR(ret));
     }
   }
   return ret;
@@ -386,6 +403,14 @@ int ObSysTableChecker::check_inner_table_exist(
   return ret;
 }
 
+int ObSysTableChecker::copy_sys_table_ids(common::ObIArray<uint64_t> &table_ids) {
+  int ret = OB_SUCCESS;
+  if (OB_FAIL(table_ids.assign(sys_table_ids_))) {
+    LOG_WARN("assign failed", KR(ret));
+  }
+  return ret;
+}
+
 /* -- hard code info for sys table indexes -- */
 bool ObSysTableChecker::is_sys_table_index_tid(const int64_t index_id)
 {
@@ -519,6 +544,59 @@ int ObSysTableChecker::add_sys_table_index_ids(
 #define ADD_SYS_INDEX_ID
 #include "share/inner_table/ob_inner_table_schema_misc.ipp"
 #undef ADD_SYS_INDEX_ID
+  }
+  return ret;
+}
+
+int ObSysTableChecker::add_sys_table_lob_aux_ids(
+    const uint64_t tenant_id,
+    ObIArray<uint64_t> &table_ids)
+{
+  int ret = OB_SUCCESS;
+  if (OB_INVALID_TENANT_ID == tenant_id) {
+    ret = OB_INVALID_ARGUMENT;
+    LOG_WARN("invalid tenant id", KR(ret), K(tenant_id));
+  } else {
+    int64_t tbl_cnt = table_ids.count();
+    // add sys table lob aux table id
+    for (int64_t i = 0; OB_SUCC(ret) && i < tbl_cnt; i++) {
+      uint64_t data_table_id = table_ids.at(i);
+      uint64_t lob_meta_table_id = 0;
+      uint64_t lob_piece_table_id = 0;
+      if (is_system_table(data_table_id)) {
+        if (OB_ALL_CORE_TABLE_TID == data_table_id) {
+            // do nothing
+        } else if (!(get_sys_table_lob_aux_table_id(data_table_id, lob_meta_table_id, lob_piece_table_id))) {
+          ret = OB_ENTRY_NOT_EXIST;
+          LOG_WARN("get lob aux table id failed.", K(ret), K(data_table_id));
+        } else if (lob_meta_table_id == 0 || lob_piece_table_id == 0) {
+          ret = OB_ERR_UNEXPECTED;
+          LOG_WARN("get lob aux table id failed.", K(ret), K(data_table_id), K(lob_meta_table_id), K(lob_piece_table_id));
+        } else if (OB_FAIL(table_ids.push_back(lob_meta_table_id))) {
+          LOG_WARN("add lob meta table id failed", KR(ret), K(tenant_id), K(data_table_id), K(lob_meta_table_id));
+        } else if (OB_FAIL(table_ids.push_back(lob_piece_table_id))) {
+          LOG_WARN("add lob piece table id failed", KR(ret), K(tenant_id), K(data_table_id), K(lob_piece_table_id));
+        }
+      }
+    }
+  }
+  return ret;
+}
+
+int ObSysTableChecker::get_sys_table_ids(
+    const uint64_t tenant_id,
+    ObIArray<uint64_t> &table_ids)
+{
+  int ret = OB_SUCCESS;
+  if (OB_INVALID_TENANT_ID == tenant_id) {
+    ret = OB_INVALID_ARGUMENT;
+    LOG_WARN("invalid tenant id", KR(ret), K(tenant_id));
+  } else if (OB_FAIL(instance().copy_sys_table_ids(table_ids))) {
+    LOG_WARN("fail to copy sys table ids", KR(ret), K(tenant_id));
+  } else if (OB_FAIL(add_sys_table_index_ids(tenant_id, table_ids))) {
+    LOG_WARN("fail to add sys table index ids", KR(ret), K(tenant_id));
+  } else if (OB_FAIL(add_sys_table_lob_aux_ids(tenant_id, table_ids))) {
+    LOG_WARN("fail to add sys table lob aux ids", KR(ret), K(tenant_id));
   }
   return ret;
 }

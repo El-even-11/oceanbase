@@ -1125,16 +1125,6 @@ private:
                                       const int64_t schema_version,
                                       const int64_t new_schema_version,
                                       bool &sys_schema_change);
-  int get_sys_table_ids(
-      const uint64_t tenant_id,
-      common::ObIArray<uint64_t> &table_ids) const;
-  int get_table_ids(const uint64_t tenant_id,
-                    const schema_create_func *schema_creators,
-                    common::ObIArray<uint64_t> &table_ids) const;
-  int add_sys_table_index_ids(const uint64_t tenant_id,
-                              common::ObIArray<uint64_t> &table_ids) const;
-  int add_sys_table_lob_aux_ids(const uint64_t tenant_id,
-                                common::ObIArray<uint64_t> &table_ids) const;
   int add_index_tids(const ObSchemaMgr &schema_mgr,
                      ObTableSchema &table);
   int extract_non_sys_table_ids_(const TableKeys &keys, common::ObIArray<uint64_t> &non_sys_table_ids);

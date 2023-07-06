@@ -5826,6 +5826,7 @@ private:
 
   int init_tenant_space_table_id_map();
   int init_sys_table_name_map();
+  int init_sys_table_ids();
   int check_tenant_space_table_id(
       const uint64_t table_id,
       bool &is_tenant_space_table);
@@ -5838,6 +5839,7 @@ private:
       const uint64_t tenant_id,
       const share::schema::ObSimpleTableSchemaV2 &table,
       bool &exist);
+  int copy_sys_table_ids(common::ObIArray<uint64_t> &table_ids);
   int ob_write_string(
       const common::ObString &src,
       common::ObString &dst);
@@ -5879,6 +5881,13 @@ public:
   static int add_sys_table_index_ids(
              const uint64_t tenant_id,
              common::ObIArray<uint64_t> &table_ids);
+  static int add_sys_table_lob_aux_ids(
+             const uint64_t tenant_id,
+             common::ObIArray<uint64_t> &table_ids);
+  static int get_sys_table_ids(
+             const uint64_t tenant_id,
+             common::ObIArray<uint64_t> &table_ids);
+          
 public:
   class TableNameWrapper
   {
@@ -5912,6 +5921,7 @@ private:
   common::hash::ObHashMap<uint64_t, TableNameWrapperArray*, common::hash::NoPthreadDefendMode> sys_table_name_map_;
   int64_t tenant_space_sys_table_num_;  // Number of tenant-level system tables (including system table indexes)
   common::ObArenaAllocator allocator_;
+  common::ObArray<uint64_t> sys_table_ids_;
   bool is_inited_;
   DISALLOW_COPY_AND_ASSIGN(ObSysTableChecker);
 };

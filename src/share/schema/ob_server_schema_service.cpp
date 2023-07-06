@@ -5875,7 +5875,7 @@ int ObServerSchemaService::try_fetch_publish_sys_schemas(
     ObArray<ObTableSchema *> sys_schemas;
     ObArray<uint64_t> sys_table_ids;
     int64_t new_schema_version = 0;
-    if (OB_FAIL(get_sys_table_ids(tenant_id, sys_table_ids))) {
+    if (OB_FAIL(ObSysTableChecker::get_sys_table_ids(tenant_id, sys_table_ids))) {
       LOG_WARN("get sys table ids failed", KR(ret), K(schema_status));
     } else if (OB_FAIL(schema_service_->get_sys_table_schemas(
                sql_client, schema_status, sys_table_ids, allocator, sys_schemas))) {
@@ -6423,88 +6423,12 @@ int ObServerSchemaService::check_sys_schema_change(
   if (!check_inner_stat()) {
     ret = OB_INNER_STAT_ERROR;
     LOG_WARN("inner stat error", KR(ret), K(schema_status));
-  } else if (OB_FAIL(get_sys_table_ids(schema_status.tenant_id_, table_ids))) {
+  } else if (OB_FAIL(ObSysTableChecker::get_sys_table_ids(schema_status.tenant_id_, table_ids))) {
     LOG_WARN("get sys table_ ids failed", KR(ret), K(schema_status));
   } else if (OB_FAIL(schema_service_->check_sys_schema_change(sql_client, schema_status,
              table_ids, schema_version, new_schema_version, sys_schema_change))) {
     LOG_WARN("check_sys_schema_change failed", KR(ret),
              K(schema_status), K(schema_version), K(new_schema_version));
-  }
-  return ret;
-}
-
-int ObServerSchemaService::get_sys_table_ids(
-    const uint64_t tenant_id,
-    ObIArray<uint64_t> &table_ids) const
-{
-  int ret = OB_SUCCESS;
-  if (OB_INVALID_ID == tenant_id) {
-    ret = OB_INVALID_ARGUMENT;
-    LOG_WARN("invalid tenant_id", KR(ret), K(tenant_id));
-  } else if (OB_FAIL(get_table_ids(tenant_id, sys_table_schema_creators, table_ids))) {
-    LOG_WARN("fail to get table ids", KR(ret), K(tenant_id));
-  } else if (OB_FAIL(ObSysTableChecker::add_sys_table_index_ids(tenant_id, table_ids))) {
-    LOG_WARN("fail to add sys table index ids", KR(ret), K(tenant_id));
-  } else if (OB_FAIL(add_sys_table_lob_aux_ids(tenant_id, table_ids))) {
-    LOG_WARN("fail to add sys table lob aux ids", KR(ret), K(tenant_id));
-  }
-  return ret;
-}
-
-int ObServerSchemaService::get_table_ids(
-    const uint64_t tenant_id,
-    const schema_create_func *schema_creators,
-    ObIArray<uint64_t> &table_ids) const
-{
-  int ret = OB_SUCCESS;
-  ObTableSchema schema;
-  table_ids.reset();
-  if (OB_ISNULL(schema_creators)) {
-    ret = OB_INVALID_ARGUMENT;
-    LOG_WARN("schema creators should not be null", KR(ret), K(tenant_id));
-  }
-  for (int64_t i = 0; OB_SUCC(ret) && NULL != schema_creators[i]; ++i) {
-    schema.reset();
-    if (OB_FAIL(schema_creators[i](schema))) {
-      LOG_WARN("create table schema failed", KR(ret), K(tenant_id));
-    } else if (OB_FAIL(table_ids.push_back(schema.get_table_id()))) {
-      LOG_WARN("push_back failed", KR(ret), K(tenant_id));
-    }
-  }
-  return ret;
-}
-
-int ObServerSchemaService::add_sys_table_lob_aux_ids(
-    const uint64_t tenant_id,
-    ObIArray<uint64_t> &table_ids) const
-{
-  int ret = OB_SUCCESS;
-  if (OB_INVALID_TENANT_ID == tenant_id) {
-    ret = OB_INVALID_ARGUMENT;
-    LOG_WARN("invalid tenant id", KR(ret), K(tenant_id));
-  } else {
-    int64_t tbl_cnt = table_ids.count();
-    // add sys table lob aux table id
-    for (int64_t i = 0; OB_SUCC(ret) && i < tbl_cnt; i++) {
-      uint64_t data_table_id = table_ids.at(i);
-      uint64_t lob_meta_table_id = 0;
-      uint64_t lob_piece_table_id = 0;
-      if (is_system_table(data_table_id)) {
-        if (OB_ALL_CORE_TABLE_TID == data_table_id) {
-            // do nothing
-        } else if (!(get_sys_table_lob_aux_table_id(data_table_id, lob_meta_table_id, lob_piece_table_id))) {
-          ret = OB_ENTRY_NOT_EXIST;
-          LOG_WARN("get lob aux table id failed.", K(ret), K(data_table_id));
-        } else if (lob_meta_table_id == 0 || lob_piece_table_id == 0) {
-          ret = OB_ERR_UNEXPECTED;
-          LOG_WARN("get lob aux table id failed.", K(ret), K(data_table_id), K(lob_meta_table_id), K(lob_piece_table_id));
-        } else if (OB_FAIL(table_ids.push_back(lob_meta_table_id))) {
-          LOG_WARN("add lob meta table id failed", KR(ret), K(tenant_id), K(data_table_id), K(lob_meta_table_id));
-        } else if (OB_FAIL(table_ids.push_back(lob_piece_table_id))) {
-          LOG_WARN("add lob piece table id failed", KR(ret), K(tenant_id), K(data_table_id), K(lob_piece_table_id));
-        }
-      }
-    }
   }
   return ret;
 }
