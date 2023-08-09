@@ -2212,6 +2212,29 @@ int ObSchemaServiceSQLImpl::fetch_all_tenant_info(
     ret; \
   })
 
+#define SQL_APPEND_TABLE_ID_AND_SCHEMA_VERSION(schema_keys, schema_key_size, sql) \
+  ({                                                                 \
+    int ret = OB_SUCCESS; \
+    if (OB_FAIL(sql.append("("))) { \
+      LOG_WARN("append sql failed", K(ret)); \
+    } else { \
+      for (int64_t i = 0; OB_SUCC(ret) && i < schema_key_size; ++i) {  \
+        const uint64_t schema_id = fill_extract_schema_id(schema_status, schema_keys[i].table_id_); \
+        const int64_t schema_version = schema_keys[i].schema_version_; \
+        if (OB_FAIL(sql.append_fmt("%s(%lu, %ld)", 0 == i ? "" : ", ", \
+                                   schema_id, schema_version))) { \
+          LOG_WARN("append sql failed", K(ret)); \
+        } \
+      } \
+      if (OB_SUCC(ret)) { \
+        if (OB_FAIL(sql.append(")"))) { \
+          LOG_WARN("append sql failed", K(ret)); \
+        } \
+      } \
+    } \
+    ret; \
+  })
+
 #define SQL_APPEND_DB_PRIV_ID(schema_keys, tenant_id, schema_key_size, sql) \
   ({                                                                 \
     int ret = OB_SUCCESS; \
@@ -4435,11 +4458,9 @@ int ObSchemaServiceSQLImpl::fetch_tables(
                                  table_name,
                                  fill_extract_tenant_id(schema_status, tenant_id)))) {
         LOG_WARN("append sql failed", K(ret));
-      } else if (OB_FAIL(sql.append_fmt(" AND SCHEMA_VERSION <= %ld", schema_version))) {
-        LOG_WARN("append sql failed", K(ret));
-      } else if (OB_FAIL(sql.append_fmt(" AND table_id in"))) {
+      } else if (OB_FAIL(sql.append_fmt(" AND (table_id, schema_version) in"))) {
         LOG_WARN("append failed", K(ret));
-      } else if (OB_FAIL(SQL_APPEND_SCHEMA_ID(table, schema_keys, schema_key_size, sql))) {
+      } else if (OB_FAIL(SQL_APPEND_TABLE_ID_AND_SCHEMA_VERSION(schema_keys, schema_key_size, sql))) {
         LOG_WARN("sql append table id failed", K(ret));
       } else {
         inc_cnt = schema_key_size;
@@ -4462,6 +4483,7 @@ int ObSchemaServiceSQLImpl::fetch_tables(
         }
       }
     }
+    FLOG_INFO("[ZIQIAN] %s", K(sql));
     if (!is_increase_schema) {
       FLOG_INFO("[REFRESH_SCHEMA] fetch all tables cost",
                 KR(ret), K(tenant_id), "cost", ObTimeUtility::current_time() - start_time);
