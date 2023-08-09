@@ -210,6 +210,7 @@
 #include "observer/virtual_table/ob_all_virtual_ls_log_restore_status.h"
 #include "observer/virtual_table/ob_all_virtual_tablet_buffer_info.h"
 #include "observer/virtual_table/ob_virtual_flt_config.h"
+#include "observer/virtual_table/ob_all_virtual_os_process.h"
 
 namespace oceanbase
 {
@@ -2491,6 +2492,15 @@ int ObVTIterCreator::create_vt_iter(ObVTableScanParam &params,
               SERVER_LOG(WARN, "fail to init ObVirtualLSLogRestoreStatus with omt", K(ret));
             } else {
               vt_iter = static_cast<ObVirtualTableIterator *>(ls_log_restore_status);
+            }
+            break;
+          }
+          case OB_ALL_VIRTUAL_OS_PROCESS_TID: {
+            ObAllVirtualOSProcess *all_virtual_os_process = NULL;
+            if (OB_SUCC(NEW_VIRTUAL_TABLE(ObAllVirtualOSProcess, all_virtual_os_process))) {
+              SERVER_LOG(ERROR, "failed to init ObAllVirtualOSProcess", K(ret));
+            } else {
+              vt_iter = static_cast<ObVirtualTableIterator *>(all_virtual_os_process);
             }
             break;
           }

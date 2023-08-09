@@ -12504,6 +12504,31 @@ def_table_schema(
 # 余留位置
 #
 
+def_table_schema(
+  owner = 'zhaoziqian.zzq',
+  table_name = '__all_virtual_os_process',
+  table_id = '13333',
+  table_type = 'VIRTUAL_TABLE',
+  gm_columns = [],
+  rowkey_columns = [
+  ],
+
+  in_tenant_space = False,
+  normal_columns = [
+    ('svr_ip', 'varchar:MAX_IP_ADDR_LENGTH'),
+    ('svr_port', 'int'),
+    ('user', 'varchar:64'),
+    ('pid', 'int'),
+    ('cpu', 'int'),
+    ('mem', 'int'),
+    ('vsz', 'int'),
+    ('rss', 'int'),
+    ('cmd', 'varchar:1024'),
+  ],
+  partition_columns = ['svr_ip', 'svr_port'],
+  vtable_route_policy = 'distributed',
+)
+
 ################################################################################
 # Oracle Virtual Table(15000,20000]
 ################################################################################

@@ -924,6 +924,7 @@ public:
   static int all_virtual_balance_task_helper_schema(share::schema::ObTableSchema &table_schema);
   static int all_virtual_balance_group_ls_stat_schema(share::schema::ObTableSchema &table_schema);
   static int all_virtual_flt_config_schema(share::schema::ObTableSchema &table_schema);
+  static int all_virtual_os_process_schema(share::schema::ObTableSchema &table_schema);
   static int all_virtual_sql_audit_ora_schema(share::schema::ObTableSchema &table_schema);
   static int all_virtual_plan_stat_ora_schema(share::schema::ObTableSchema &table_schema);
   static int all_virtual_plan_cache_plan_explain_ora_schema(share::schema::ObTableSchema &table_schema);
@@ -3259,6 +3260,7 @@ const schema_create_func virtual_table_schema_creators [] = {
   ObInnerTableSchema::all_virtual_balance_group_ls_stat_schema,
   ObInnerTableSchema::all_virtual_flt_config_schema,
   ObInnerTableSchema::all_virtual_ash_all_virtual_ash_i1_schema,
+  ObInnerTableSchema::all_virtual_os_process_schema,
   ObInnerTableSchema::all_virtual_sql_plan_monitor_all_virtual_sql_plan_monitor_i1_schema,
   ObInnerTableSchema::all_virtual_sql_audit_all_virtual_sql_audit_i1_schema,
   ObInnerTableSchema::all_virtual_sysstat_all_virtual_sysstat_i1_schema,
@@ -8673,7 +8675,8 @@ const uint64_t cluster_distributed_vtables [] = {
   OB_ALL_VIRTUAL_MINOR_FREEZE_INFO_TID,
   OB_ALL_VIRTUAL_HA_DIAGNOSE_TID,
   OB_ALL_VIRTUAL_IO_SCHEDULER_TID,
-  OB_ALL_VIRTUAL_TX_DATA_TID,  };
+  OB_ALL_VIRTUAL_TX_DATA_TID,
+  OB_ALL_VIRTUAL_OS_PROCESS_TID,  };
 
 const uint64_t tenant_distributed_vtables [] = {
   OB_ALL_VIRTUAL_PROCESSLIST_TID,
@@ -11125,6 +11128,7 @@ const int64_t OB_SYS_VIEW_COUNT = 757;
 const int64_t OB_SYS_TENANT_TABLE_COUNT = 1724;
 const int64_t OB_CORE_SCHEMA_VERSION = 1;
 const int64_t OB_BOOTSTRAP_SCHEMA_VERSION = 1727;
+
 
 } // end namespace share
 } // end namespace oceanbase
