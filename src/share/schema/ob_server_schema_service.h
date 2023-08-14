@@ -171,6 +171,10 @@ struct SchemaKey
   {
     return a.tenant_id_ < b.tenant_id_;
   }
+  static bool cmp_with_table_id_greater(const SchemaKey &a, const SchemaKey &b)
+  {
+    return a.table_id_ > b.table_id_;
+  }
   uint64_t get_tenant_key() const
   {
     return tenant_id_;
@@ -1203,6 +1207,12 @@ protected:
       common::ObIAllocator &allocator,
       const uint64_t tenant_id,
       const AllSchemaKeys &schema_keys,
+      common::ObIArray<const ObTableSchema *> &table_schemas);
+  int fetch_increment_table_schemas_for_data_dict_v2_(
+      common::ObMySQLTransaction &trans,
+      common::ObIAllocator &allocator,
+      const uint64_t tenant_id,
+      const AllSchemaKeys &all_keys,
       common::ObIArray<const ObTableSchema *> &table_schemas);
 protected:
   // core table count

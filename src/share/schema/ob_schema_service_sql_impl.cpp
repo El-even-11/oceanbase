@@ -414,6 +414,36 @@ int ObSchemaServiceSQLImpl::get_batch_table_schema(
   return ret;
 }
 
+int ObSchemaServiceSQLImpl::get_batch_table_schema_v2(
+    const ObRefreshSchemaStatus &schema_status,
+    const int64_t schema_version,
+    ObArray<SchemaKey> &schema_keys,
+    ObISQLClient &sql_client,
+    ObIAllocator &allocator,
+    ObArray<ObTableSchema *> &table_schema_array)
+{
+  int ret = OB_SUCCESS;
+  LOG_DEBUG("fetch batch table schema begin.");
+
+  if (!check_inner_stat()) {
+    ret = OB_NOT_INIT;
+    LOG_WARN("check inner stat fail");
+  } else if (schema_version <= 0) {
+    ret = OB_INVALID_ARGUMENT;
+    LOG_WARN("invalid schema_version", K(schema_version), K(ret));
+  } else {
+    std::sort(schema_keys.begin(), schema_keys.end(), SchemaKey::cmp_with_table_id_greater);
+    if (OB_FAIL(get_not_core_table_schemas_v2(schema_status, schema_version, schema_keys,
+                                           sql_client, allocator, table_schema_array))) {
+      LOG_WARN("get_not_core_table_schemas_v2 failed", K(schema_version),
+               K(schema_keys), K(ret));
+    }
+  }
+
+  LOG_INFO("get batch table schema finish", K(schema_version), K(ret));
+  return ret;
+}
+
 int ObSchemaServiceSQLImpl::get_new_schema_version(uint64_t tenant_id, int64_t &schema_version)
 {
   int ret = OB_SUCCESS;
@@ -731,6 +761,94 @@ int ObSchemaServiceSQLImpl::get_not_core_table_schemas(
   }
   return ret;
 }
+
+int ObSchemaServiceSQLImpl::get_not_core_table_schemas_v2(
+    const ObRefreshSchemaStatus &schema_status,
+    const int64_t schema_version, const ObArray<SchemaKey> &schema_keys,
+    ObISQLClient &sql_client, ObIAllocator &allocator,
+    ObArray<ObTableSchema *> &not_core_schemas)
+{
+  int ret = OB_SUCCESS;
+  const uint64_t tenant_id = schema_status.tenant_id_;
+  if (!check_inner_stat()) {
+    ret = OB_NOT_INIT;
+    LOG_WARN("check inner stat fail, ", K(ret));
+  } else if (schema_version <= 0) {
+    ret = OB_INVALID_ARGUMENT;
+    LOG_WARN("invalid schema_version", K(schema_version), K(ret));
+  } else {
+    // split query to tenant space && split big query
+    int64_t begin = 0;
+    int64_t end = 0;
+    while (OB_SUCCESS == ret && end < schema_keys.count()) {
+      while (OB_SUCCESS == ret && end < schema_keys.count()
+             && end - begin < MAX_IN_QUERY_PER_TIME) {
+        end++;
+      }
+      if (OB_FAIL(fetch_all_table_info_v2(schema_status, schema_version, tenant_id, sql_client, allocator,
+                                       not_core_schemas, &schema_keys.at(begin), end - begin))) {
+        LOG_WARN("fetch all table info failed", K(schema_version), K(schema_status), K(tenant_id), K(ret));
+      }
+      begin = end;
+    }  
+
+    if (OB_SUCC(ret)) {
+      ObArray<uint64_t> table_ids;
+      FOREACH_X(key, schema_keys, OB_SUCC(ret)) {
+        const uint64_t table_id = key->table_id_;
+        if (OB_FAIL(table_ids.push_back(table_id))) {
+          LOG_WARN("fail to push back table key", KR(ret), K(table_id));
+        }
+      } // end FOREACH_X
+      int64_t begin = 0;
+      int64_t end = 0;
+      while (OB_SUCCESS == ret && end < table_ids.count()) {
+        while (OB_SUCCESS == ret && end < table_ids.count()
+               && end - begin < MAX_IN_QUERY_PER_TIME) {
+          end++;
+        }
+        if (OB_FAIL(fetch_all_column_info(schema_status, schema_version, tenant_id, sql_client,
+                                                not_core_schemas, &table_ids.at(begin), end - begin))) {
+          LOG_WARN("fetch all column info failed", K(schema_version), K(schema_status), K(tenant_id), K(ret));
+        } else if (OB_FAIL(fetch_all_partition_info(schema_status, schema_version, tenant_id, sql_client,
+                                                    not_core_schemas, &table_ids.at(begin), end - begin))) {
+          LOG_WARN("Failed to fetch all partition info", K(ret), K(schema_version), K(schema_status), K(tenant_id));
+        } else if (OB_FAIL(fetch_all_constraint_info_ignore_inner_table(schema_status, schema_version, tenant_id,
+                  sql_client, not_core_schemas, &table_ids.at(begin), end - begin))) {
+          LOG_WARN("fetch all constraints info failed", K(schema_version), K(schema_status), K(tenant_id), K(ret));
+          // For liboblog compatibility, we should ingore error when table is not exist.
+          if (-ER_NO_SUCH_TABLE == ret && ObSchemaService::g_liboblog_mode_) {
+            LOG_WARN("liboblog mode, ignore all constraint info schema table NOT EXIST error",
+                K(ret), K(schema_version), K(schema_status));
+          }
+        }
+        begin = end;    
+      }  
+    }
+    for (int64_t i = 0; OB_SUCC(ret) && i < not_core_schemas.count(); ++i) {
+      if (OB_ISNULL(not_core_schemas.at(i))) {
+        ret = OB_ERR_UNEXPECTED;
+        LOG_WARN("table schema is NULL", KR(ret), K(tenant_id));
+      } else if (OB_FAIL(ObSchemaRetrieveUtils::cascaded_generated_column(*not_core_schemas.at(i)))) {
+        LOG_WARN("cascaded_generated_column failed", KR(ret), KPC(not_core_schemas.at(i)));
+      }
+    }
+    if (FAILEDx(sort_tables_partition_info(not_core_schemas))) {
+      LOG_WARN("fail to sort tables partition info", KR(ret), K(tenant_id));
+    }
+    if (OB_SUCC(ret)) {
+      int64_t tenant_id = OB_INVALID_TENANT_ID;
+      if (not_core_schemas.count() <= 0) {
+        /*do nothing*/
+      } else if (FALSE_IT(tenant_id = not_core_schemas.at(0)->get_tenant_id())) {
+      } else if (OB_FAIL(fetch_all_encrypt_info(schema_status, schema_version, tenant_id, sql_client,
+                 not_core_schemas, not_core_schemas.count()))) {
+        LOG_WARN("fail to fetch all encrypt info", K(ret));
+      }
+    }
+  }
+  return ret;
+}   
 
 /*
 int ObSchemaServiceSQLImpl::insert_sys_param(
@@ -2503,6 +2621,68 @@ int ObSchemaServiceSQLImpl::fetch_all_table_info(const ObRefreshSchemaStatus &sc
       } else if (OB_FAIL(ObSchemaRetrieveUtils::retrieve_table_schema(
                  tenant_id, check_deleted, *result, allocator, table_schema_array))) {
         LOG_WARN("failed to retrieve all table schema:", K(check_deleted), K(ret));
+      }
+    }
+  }
+
+  if (OB_SUCC(ret)) {
+    if (OB_FAIL(fetch_temp_table_schemas(schema_status, tenant_id, sql_client_retry_weak, table_schema_array))) {
+      LOG_WARN("failed to fill temp table schemas", K(ret));
+    }
+  }
+  return ret;
+}
+
+template <typename T>
+int ObSchemaServiceSQLImpl::fetch_all_table_info_v2(const ObRefreshSchemaStatus &schema_status,
+                                                 const int64_t schema_version,
+                                                 const uint64_t tenant_id,
+                                                 ObISQLClient &sql_client,
+                                                 ObIAllocator &allocator,
+                                                 ObIArray<T> &table_schema_array,
+                                                 const SchemaKey *schema_keys /* = NULL */,
+                                                 const int64_t schema_key_size /* = 0 */)
+{
+  int ret = OB_SUCCESS;
+  ObSqlString sql;
+  const int64_t snapshot_timestamp = schema_status.snapshot_timestamp_;
+  DEFINE_SQL_CLIENT_RETRY_WEAK_WITH_SNAPSHOT(sql_client, snapshot_timestamp);
+  const uint64_t exec_tenant_id = fill_exec_tenant_id(schema_status);
+  if (!check_inner_stat()) {
+    ret = OB_NOT_INIT;
+    LOG_WARN("check inner stat fail", K(ret));
+  } else if (OB_INVALID_TENANT_ID == tenant_id) {
+    ret = OB_INVALID_ARGUMENT;
+    LOG_WARN("invalid tenant_id", K(ret), K(tenant_id));
+  } else {
+    const char *table_name = NULL;
+    if (OB_FAIL(ObSchemaUtils::get_all_table_history_name(exec_tenant_id,
+                                                          table_name,
+                                                          schema_service_))) {
+      LOG_WARN("fail to get all table name", K(ret), K(exec_tenant_id));
+    } else if (OB_FAIL(sql.append_fmt(FETCH_ALL_TABLE_HISTORY_SQL,
+                                      table_name,
+                                      fill_extract_tenant_id(schema_status, tenant_id)))) {
+      LOG_WARN("append sql failed", K(ret));
+    } else if (sql.append_fmt(" AND (table_id, schema_version) in")) {
+      LOG_WARN("append failed", K(ret));
+    } else if (OB_FAIL(SQL_APPEND_TABLE_ID_AND_SCHEMA_VERSION(schema_keys, schema_key_size, sql))) {
+      LOG_WARN("sql append table id failed", K(ret));
+    } else if (OB_FAIL(sql.append_fmt(" ORDER BY TENANT_ID DESC, TABLE_ID DESC, SCHEMA_VERSION DESC"))) {
+      LOG_WARN("append sql failed", K(ret));
+    } else {
+      SMART_VAR(ObMySQLProxy::MySQLResult, res) {
+      ObMySQLResult *result = NULL;
+      const bool check_deleted = (INT64_MAX != schema_version);
+      if (OB_FAIL(sql_client_retry_weak.read(res, exec_tenant_id, sql.ptr()))) {
+        LOG_WARN("execute sql failed", K(sql), K(ret));
+      } else if (OB_UNLIKELY(NULL == (result = res.get_result()))) {
+        ret = OB_ERR_UNEXPECTED;
+        LOG_WARN("fail to get result. ", K(ret));
+      } else if (OB_FAIL(ObSchemaRetrieveUtils::retrieve_table_schema(
+                 tenant_id, check_deleted, *result, allocator, table_schema_array))) {
+        LOG_WARN("failed to retrieve all table schema", K(check_deleted), K(ret));
+      }
       }
     }
   }
@@ -4483,7 +4663,7 @@ int ObSchemaServiceSQLImpl::fetch_tables(
         }
       }
     }
-    FLOG_INFO("[ZIQIAN] %s", K(sql));
+    FLOG_INFO("[ZIQIAN] ", K(sql));
     if (!is_increase_schema) {
       FLOG_INFO("[REFRESH_SCHEMA] fetch all tables cost",
                 KR(ret), K(tenant_id), "cost", ObTimeUtility::current_time() - start_time);

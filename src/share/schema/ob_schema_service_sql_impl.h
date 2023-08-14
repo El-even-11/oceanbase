@@ -171,7 +171,12 @@ public:
                                      common::ObISQLClient &sql_client,
                                      common::ObIAllocator &allocator,
                                      common::ObArray<ObTableSchema *> &table_schema_array);
-
+  virtual int get_batch_table_schema_v2(const ObRefreshSchemaStatus &schema_status,
+                                        const int64_t schema_version,
+                                        common::ObArray<SchemaKey> &schema_keys,
+                                        common::ObISQLClient &sql_client,
+                                        common::ObIAllocator &allocator,
+                                        common::ObArray<ObTableSchema *> &table_schema_array);
   /**
    * for refresh full schema
    */
@@ -645,6 +650,12 @@ private:
               common::ObISQLClient &sql_client,
               common::ObIAllocator &allocator,
               common::ObArray<ObTableSchema *> &not_core_schemas);
+  int get_not_core_table_schemas_v2(const ObRefreshSchemaStatus &schema_status,
+                                              const int64_t schema_version,
+                                              const common::ObArray<SchemaKey> &schema_keys,
+                                              common::ObISQLClient &sql_client,
+                                              common::ObIAllocator &allocator,
+                                              common::ObArray<ObTableSchema *> &not_core_schemas);
 
   template <typename T>
   int fetch_all_table_info(const ObRefreshSchemaStatus &schema_status,
@@ -655,6 +666,15 @@ private:
                            common::ObIArray<T> &table_schema_array,
                            const uint64_t *table_ids = NULL,
                            const int64_t table_ids_size = 0);
+  template <typename T>
+  int fetch_all_table_info_v2(const ObRefreshSchemaStatus &schema_status,
+                           const int64_t schema_version,
+                           uint64_t tenant_id,
+                           common::ObISQLClient &sql_client,
+                           common::ObIAllocator &allocator,
+                           common::ObIArray<T> &table_schema_array,
+                           const SchemaKey *schema_keys = NULL,
+                           const int64_t schema_key_size = 0);
   int fetch_all_column_info(const ObRefreshSchemaStatus &schema_status,
                             const int64_t schema_version,
                             const uint64_t tenant_id,

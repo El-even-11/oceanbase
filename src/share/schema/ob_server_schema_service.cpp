@@ -4918,7 +4918,7 @@ int ObServerSchemaService::fetch_increment_schemas_for_data_dict_(
             trans, allocator, tenant_id, schema_keys, database_schemas))) {
     LOG_WARN("fail to fetch increment database schemas",
              KR(ret), K(tenant_id), "new_databases", schema_keys.new_database_keys_);
-  } else if (OB_FAIL(fetch_increment_table_schemas_for_data_dict_(
+  } else if (OB_FAIL(fetch_increment_table_schemas_for_data_dict_v2_(
             trans, allocator, tenant_id, schema_keys, table_schemas))) {
     LOG_WARN("fail to fetch increment table schemas",
              KR(ret), K(tenant_id), "new_tables", schema_keys.new_table_keys_);
@@ -5075,6 +5075,64 @@ int ObServerSchemaService::fetch_increment_table_schemas_for_data_dict_(
     } else if (tmp_tables.count() != table_ids.count()) {
       ret = OB_ERR_UNEXPECTED;
       LOG_WARN("table cnt not match", KR(ret), K(table_ids), K(tmp_tables));
+    } else {
+      for (int64_t i = 0; OB_SUCC(ret) && i < tmp_tables.count(); i++) {
+        ObTableSchema *table_schema = tmp_tables.at(i);
+        if (OB_ISNULL(table_schema)) {
+          ret = OB_ERR_UNEXPECTED;
+          LOG_WARN("ptr is null", KR(ret));
+        } else if (need_construct_aux_infos_(*table_schema)
+                   && OB_FAIL(construct_aux_infos_(
+          trans, status, tenant_id, *table_schema))) {
+          LOG_WARN("fail to construct aux infos", KR(ret),
+                   K(status), K(tenant_id), KPC(table_schema));
+        } else if (OB_FAIL(table_schemas.push_back(table_schema))) {
+          LOG_WARN("fail to push back ptr", KR(ret), KPC(table_schema));
+        } else {
+          LOG_INFO("fetch increment table schema for data dict", K(tenant_id),
+                   "table_id", table_schema->get_table_id(),
+                   "schema_version", table_schema->get_schema_version());
+        }
+      } // end for
+    }
+  }
+  return ret;
+}
+
+// won't fetch inner table schemas
+int ObServerSchemaService::fetch_increment_table_schemas_for_data_dict_v2_(
+    common::ObMySQLTransaction &trans,
+    common::ObIAllocator &allocator,
+    const uint64_t tenant_id,
+    const AllSchemaKeys &all_keys,
+    common::ObIArray<const ObTableSchema *> &table_schemas)
+{
+  int ret = OB_SUCCESS;
+  table_schemas.reset();
+  if (!check_inner_stat()) {
+    ret = OB_INNER_STAT_ERROR;
+    LOG_WARN("inner stat error", KR(ret));
+  } else {
+    ObArray<SchemaKey> schema_keys;
+    FOREACH_X(it, all_keys.new_table_keys_, OB_SUCC(ret)) {
+      const SchemaKey &key = it->first;
+      const uint64_t table_id = key.get_table_key().table_id_;
+      if (is_inner_table(table_id)) {
+        // skip
+      } else if (OB_FAIL(schema_keys.push_back(key))) {
+        LOG_WARN("fail to push back schema key", KR(ret), K(key));
+      }
+    } // end FOREACH_X
+    ObRefreshSchemaStatus status;
+    status.tenant_id_ = tenant_id;
+    int64_t schema_version = INT64_MAX - 1;
+    ObArray<ObTableSchema *> tmp_tables;
+    if (FAILEDx(schema_service_->get_batch_table_schema_v2(
+        status, schema_version, schema_keys, trans, allocator, tmp_tables))) {
+      LOG_WARN("get batch tables failed", KR(ret), K(status), K(schema_keys));
+    } else if (tmp_tables.count() != schema_keys.count()) {
+      ret = OB_ERR_UNEXPECTED;
+      LOG_WARN("table cnt not match", KR(ret), K(schema_keys), K(tmp_tables));
     } else {
       for (int64_t i = 0; OB_SUCC(ret) && i < tmp_tables.count(); i++) {
         ObTableSchema *table_schema = tmp_tables.at(i);

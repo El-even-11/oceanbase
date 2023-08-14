@@ -783,7 +783,12 @@ public:
                                      common::ObISQLClient &sql_client,
                                      common::ObIAllocator &allocator,
                                      common::ObArray<ObTableSchema *> &table_schema_array) = 0;
-
+  virtual int get_batch_table_schema_v2(const ObRefreshSchemaStatus &schema_status,
+                                        const int64_t schema_version,
+                                        common::ObArray<SchemaKey> &schema_keys,
+                                        common::ObISQLClient &sql_client,
+                                        common::ObIAllocator &allocator,
+                                        common::ObArray<ObTableSchema *> &table_schema_array) = 0;
 #define GET_BATCH_FULL_SCHEMA_FUNC_DECLARE_PURE_VIRTUAL(SCHEMA, SCHEMA_TYPE)                        \
   virtual int get_batch_##SCHEMA##s(const ObRefreshSchemaStatus &schema_status, \
                                     const int64_t schema_version,                             \
