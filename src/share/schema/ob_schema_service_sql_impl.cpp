@@ -4512,20 +4512,28 @@ int ObSchemaServiceSQLImpl::fetch_tables(
         LOG_WARN("append sql failed", K(ret));
       }
     } else {
-      if (OB_FAIL(sql.append_fmt(FETCH_ALL_TABLE_HISTORY_SQL3,
-                                 table_name,
-                                 fill_extract_tenant_id(schema_status, tenant_id)))) {
+      if (OB_FAIL(sql.append_fmt("SELECT a.* FROM %s AS a JOIN (",
+                                 table_name))) {
         LOG_WARN("append sql failed", K(ret));
-      } else if (OB_FAIL(sql.append_fmt(" AND SCHEMA_VERSION <= %ld", schema_version))) {
+      } else if (OB_FAIL(sql.append_fmt("SELECT tenant_id, table_id, MAX(schema_version) AS schema_version FROM %s", table_name))) {
         LOG_WARN("append sql failed", K(ret));
-      } else if (OB_FAIL(sql.append_fmt(" AND table_id in"))) {
-        LOG_WARN("append failed", K(ret));
-      } else if (OB_FAIL(SQL_APPEND_SCHEMA_ID(table, schema_keys, schema_key_size, sql))) {
+      } else if (OB_FAIL(sql.append_fmt(" WHERE tenant_id = %lu", fill_extract_tenant_id(schema_status, tenant_id)))) {
+        LOG_WARN("append sql failed", K(ret));
+      } else if (OB_FAIL(sql.append_fmt(" AND schema_version <= %ld", schema_version))) {
+        LOG_WARN("append sql failed", K(ret));
+      } else if (OB_FAIL(sql.append_fmt(" AND table_id IN"))) {
         LOG_WARN("sql append table id failed", K(ret));
+      } else if (OB_FAIL(SQL_APPEND_SCHEMA_ID(table, schema_keys, schema_key_size, sql))) {
+        LOG_WARN("append sql failed", K(ret));
+      } else if (OB_FAIL(sql.append_fmt(" GROUP BY tenant_id, table_id) AS b"))) {
+        LOG_WARN("append sql failed", K(ret));
+      } else if (OB_FAIL(sql.append_fmt(" ON a.tenant_id = b.tenant_id AND a.table_id = b.table_id AND a.schema_version = b.schema_version"))) {
+        LOG_WARN("append sql failed", K(ret));
       } else {
         inc_cnt = schema_key_size;
       }
     }
+    FLOG_INFO("[ZIQIAN]", K(sql));
     if (OB_SUCC(ret)) {
       SMART_VAR(ObMySQLProxy::MySQLResult, res) {
         DEFINE_SQL_CLIENT_RETRY_WEAK_WITH_SNAPSHOT(sql_client, snapshot_timestamp);
@@ -4545,10 +4553,12 @@ int ObSchemaServiceSQLImpl::fetch_tables(
         }
       }
     }
-    if (!is_increase_schema) {
-      FLOG_INFO("[REFRESH_SCHEMA] fetch all tables cost",
+    // if (!is_increase_schema) {
+    //   FLOG_INFO("[REFRESH_SCHEMA] fetch all tables cost",
+    //             KR(ret), K(tenant_id), "cost", ObTimeUtility::current_time() - start_time);
+    // }
+    FLOG_INFO("[REFRESH_SCHEMA] fetch tables cost",
                 KR(ret), K(tenant_id), "cost", ObTimeUtility::current_time() - start_time);
-    }
   }
   if (OB_SUCC(ret)) {
     ObArray<uint64_t> table_ids;
