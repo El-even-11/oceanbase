@@ -456,6 +456,16 @@ public:
   FETCH_SCHEMAS_FUNC_DECLARE(rls_group, ObRlsGroupSchema);
   FETCH_SCHEMAS_FUNC_DECLARE(rls_context, ObRlsContextSchema);
 
+  int gen_fetch_tables_sql(
+      const ObRefreshSchemaStatus &schema_status,
+      const uint64_t tenant_id,
+      const int64_t schema_version,
+      const char *table_name,
+      const SchemaKey *schema_keys,
+      const int64_t schema_key_size,
+      ObSqlString &sql
+  );
+
   int fetch_mock_fk_parent_table_column_info(
       const ObRefreshSchemaStatus &schema_status,
       const uint64_t tenant_id,

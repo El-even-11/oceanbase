@@ -121,6 +121,12 @@ const char *ObSysVarParallelDegreePolicy::PARALLEL_DEGREE_POLICY_NAMES[] = {
   "AUTO",
   0
 };
+const char *ObSysVarFetchTablesPlan::FETCH_TABLES_PLAN_NAMES[] = {
+  "SCAN",
+  "JOIN",
+  "GET",
+  0
+};
 
 const char *ObSysVarFactory::SYS_VAR_NAMES_SORTED_BY_NAME[] = {
   "_aggregation_optimization_settings",
@@ -187,6 +193,7 @@ const char *ObSysVarFactory::SYS_VAR_NAMES_SORTED_BY_NAME[] = {
   "error_count",
   "error_on_overlap_time",
   "explicit_defaults_for_timestamp",
+  "fetch_tables_plan",
   "foreign_key_checks",
   "general_log",
   "group_concat_max_len",
@@ -423,6 +430,7 @@ const ObSysVarClassType ObSysVarFactory::SYS_VAR_IDS_SORTED_BY_NAME[] = {
   SYS_VAR_ERROR_COUNT,
   SYS_VAR_ERROR_ON_OVERLAP_TIME,
   SYS_VAR_EXPLICIT_DEFAULTS_FOR_TIMESTAMP,
+  SYS_VAR_FETCH_TABLES_PLAN,
   SYS_VAR_FOREIGN_KEY_CHECKS,
   SYS_VAR_GENERAL_LOG,
   SYS_VAR_GROUP_CONCAT_MAX_LEN,
@@ -827,7 +835,8 @@ const char *ObSysVarFactory::SYS_VAR_NAMES_SORTED_BY_ID[] = {
   "runtime_filter_wait_time_ms",
   "runtime_filter_max_in_num",
   "runtime_bloom_filter_max_size",
-  "optimizer_features_enable"
+  "optimizer_features_enable",
+  "fetch_tables_plan"
 };
 
 bool ObSysVarFactory::sys_var_name_case_cmp(const char *name1, const ObString &name2)
@@ -1229,6 +1238,7 @@ int ObSysVarFactory::create_all_sys_vars()
         + sizeof(ObSysVarRuntimeFilterMaxInNum)
         + sizeof(ObSysVarRuntimeBloomFilterMaxSize)
         + sizeof(ObSysVarOptimizerFeaturesEnable)
+        + sizeof(ObSysVarFetchTablesPlan)
         ;
     void *ptr = NULL;
     if (OB_ISNULL(ptr = allocator_.alloc(total_mem_size))) {
@@ -3332,6 +3342,15 @@ int ObSysVarFactory::create_all_sys_vars()
       } else {
         store_buf_[ObSysVarsToIdxMap::get_store_idx(static_cast<int64_t>(SYS_VAR_OPTIMIZER_FEATURES_ENABLE))] = sys_var_ptr;
         ptr = (void *)((char *)ptr + sizeof(ObSysVarOptimizerFeaturesEnable));
+      }
+    }
+    if (OB_SUCC(ret)) {
+      if (OB_ISNULL(sys_var_ptr = new (ptr)ObSysVarFetchTablesPlan())) {
+        ret = OB_ALLOCATE_MEMORY_FAILED;
+        LOG_ERROR("fail to new ObSysVarFetchTablesPlan", K(ret));
+      } else {
+        store_buf_[ObSysVarsToIdxMap::get_store_idx(static_cast<int64_t>(SYS_VAR_FETCH_TABLES_PLAN))] = sys_var_ptr;
+        ptr = (void *)((char *)ptr + sizeof(ObSysVarFetchTablesPlan));
       }
     }
 
@@ -5904,6 +5923,17 @@ int ObSysVarFactory::create_sys_var(ObIAllocator &allocator_, ObSysVarClassType 
       } else if (OB_ISNULL(sys_var_ptr = new (ptr)ObSysVarOptimizerFeaturesEnable())) {
         ret = OB_ALLOCATE_MEMORY_FAILED;
         LOG_ERROR("fail to new ObSysVarOptimizerFeaturesEnable", K(ret));
+      }
+      break;
+    }
+    case SYS_VAR_FETCH_TABLES_PLAN: {
+      void *ptr = NULL;
+      if (OB_ISNULL(ptr = allocator_.alloc(sizeof(ObSysVarFetchTablesPlan)))) {
+        ret = OB_ALLOCATE_MEMORY_FAILED;
+        LOG_ERROR("fail to alloc memory", K(ret), K(sizeof(ObSysVarFetchTablesPlan)));
+      } else if (OB_ISNULL(sys_var_ptr = new (ptr)ObSysVarFetchTablesPlan())) {
+        ret = OB_ALLOCATE_MEMORY_FAILED;
+        LOG_ERROR("fail to new ObSysVarFetchTablesPlan", K(ret));
       }
       break;
     }

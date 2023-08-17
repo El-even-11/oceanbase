@@ -3322,5 +3322,23 @@
     "info_cn": "",
     "background_cn": "",
     "ref_url": ""
+  },
+  "fetch_tables_plan": {
+    "id": 10151,
+    "name": "fetch_tables_plan",
+    "default_value": "0",
+    "base_value": "0",
+    "data_type": "enum",
+    "info": "fetch tables plan in refresh increment schema",
+    "flags": "GLOBAL",
+    "enum_names": [
+      "SCAN",
+      "JOIN",
+      "GET"
+    ],
+    "publish_version": "",
+    "info_cn": "",
+    "background_cn": "",
+    "ref_url": ""
   }
 }

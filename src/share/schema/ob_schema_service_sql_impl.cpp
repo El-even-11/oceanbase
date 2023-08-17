@@ -4512,16 +4512,14 @@ int ObSchemaServiceSQLImpl::fetch_tables(
         LOG_WARN("append sql failed", K(ret));
       }
     } else {
-      if (OB_FAIL(sql.append_fmt(FETCH_ALL_TABLE_HISTORY_SQL3,
-                                 table_name,
-                                 fill_extract_tenant_id(schema_status, tenant_id)))) {
-        LOG_WARN("append sql failed", K(ret));
-      } else if (OB_FAIL(sql.append_fmt(" AND SCHEMA_VERSION <= %ld", schema_version))) {
-        LOG_WARN("append sql failed", K(ret));
-      } else if (OB_FAIL(sql.append_fmt(" AND table_id in"))) {
-        LOG_WARN("append failed", K(ret));
-      } else if (OB_FAIL(SQL_APPEND_SCHEMA_ID(table, schema_keys, schema_key_size, sql))) {
-        LOG_WARN("sql append table id failed", K(ret));
+      if (OB_FAIL(gen_fetch_tables_sql(schema_status,
+                                       tenant_id,
+                                       schema_version,
+                                       table_name,
+                                       schema_keys,
+                                       schema_key_size,
+                                       sql))) {
+        LOG_WARN("generate fetch tables sql faield", K(ret));
       } else {
         inc_cnt = schema_key_size;
       }
@@ -4610,6 +4608,54 @@ int ObSchemaServiceSQLImpl::fetch_tables(
               KR(ret), K(tenant_id),
               "cost", ObTimeUtility::current_time() - start_time);
   }
+  return ret;
+}
+
+int ObSchemaServiceSQLImpl::gen_fetch_tables_sql(
+    const ObRefreshSchemaStatus &schema_status,
+    const uint64_t tenant_id,
+    const int64_t schema_version,
+    const char *table_name,
+    const SchemaKey *schema_keys,
+    const int64_t schema_key_size,
+    ObSqlString &sql)
+{
+  int ret = OB_SUCCESS;
+  ObSchemaGetterGuard schema_guard;
+  const ObSysVarSchema *sys_var_schema = NULL;
+  ObObj fetch_tables_plan_obj;
+  int64_t fetch_tables_plan = -1;
+  if (OB_ISNULL(GCTX.schema_service_)) {
+    ret = OB_ERR_UNEXPECTED;
+    LOG_WARN("schema service is null");
+  } else if (OB_FAIL(GCTX.schema_service_->get_tenant_schema_guard(tenant_id, schema_guard))) {
+    LOG_WARN("get schema guard failed", K(ret), K(tenant_id));
+  } else if (OB_FAIL(schema_guard.get_tenant_system_variable(tenant_id,
+                                                             SYS_VAR_FETCH_TABLES_PLAN,
+                                                             sys_var_schema))) {
+    LOG_WARN("get tenant system variable failed", K(ret), K(tenant_id));
+  } else if (OB_ISNULL(sys_var_schema)) {
+    ret = OB_ERR_UNEXPECTED;
+    LOG_WARN("sys var schema is null");
+  } else if (OB_FAIL(sys_var_schema->get_value(NULL, NULL, fetch_tables_plan_obj))) {
+    LOG_WARN("get value failed", K(ret), K(fetch_tables_plan));
+  } else if (OB_FAIL(fetch_tables_plan_obj.get_int(fetch_tables_plan))) {
+    LOG_WARN("get int failed", K(ret));
+  }
+  FLOG_INFO("[ZIQIAN]", K(fetch_tables_plan));
+
+  if (OB_FAIL(sql.append_fmt(FETCH_ALL_TABLE_HISTORY_SQL3,
+                             table_name,
+                             fill_extract_tenant_id(schema_status, tenant_id)))) {
+    LOG_WARN("append sql failed", K(ret));
+  } else if (OB_FAIL(sql.append_fmt(" AND SCHEMA_VERSION <= %ld", schema_version))) {
+    LOG_WARN("append sql failed", K(ret));
+  } else if (OB_FAIL(sql.append_fmt(" AND table_id in"))) {
+    LOG_WARN("append failed", K(ret));
+  } else if (OB_FAIL(SQL_APPEND_SCHEMA_ID(table, schema_keys, schema_key_size, sql))) {
+    LOG_WARN("sql append table id failed", K(ret));
+  }
+
   return ret;
 }
 
