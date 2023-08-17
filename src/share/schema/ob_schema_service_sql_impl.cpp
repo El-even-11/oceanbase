@@ -2238,6 +2238,29 @@ int ObSchemaServiceSQLImpl::fetch_all_tenant_info(
     ret; \
   })
 
+	#define SQL_APPEND_TABLE_ID_AND_SCHEMA_VERSION(schema_keys, schema_key_size, sql) \
+  ({                                                                 \
+    int ret = OB_SUCCESS; \
+    if (OB_FAIL(sql.append("("))) { \
+      LOG_WARN("append sql failed", K(ret)); \
+    } else { \
+      for (int64_t i = 0; OB_SUCC(ret) && i < schema_key_size; ++i) {  \
+        const uint64_t schema_id = fill_extract_schema_id(schema_status, schema_keys[i].table_id_); \
+        const int64_t schema_version = schema_keys[i].schema_version_; \
+        if (OB_FAIL(sql.append_fmt("%s(%lu, %ld)", 0 == i ? "" : ", ", \
+                                   schema_id, schema_version))) { \
+          LOG_WARN("append sql failed", K(ret)); \
+        } \
+      } \
+      if (OB_SUCC(ret)) { \
+        if (OB_FAIL(sql.append(")"))) { \
+          LOG_WARN("append sql failed", K(ret)); \
+        } \
+      } \
+    } \
+    ret; \
+  })
+
 #define SQL_APPEND_DB_PRIV_ID(schema_keys, tenant_id, schema_key_size, sql) \
   ({                                                                 \
     int ret = OB_SUCCESS; \
@@ -4543,10 +4566,14 @@ int ObSchemaServiceSQLImpl::fetch_tables(
         }
       }
     }
-    if (!is_increase_schema) {
-      FLOG_INFO("[REFRESH_SCHEMA] fetch all tables cost",
-                KR(ret), K(tenant_id), "cost", ObTimeUtility::current_time() - start_time);
-    }
+    // if (!is_increase_schema) {
+    //   FLOG_INFO("[REFRESH_SCHEMA] fetch all tables cost",
+    //             KR(ret), K(tenant_id), "cost", ObTimeUtility::current_time() - start_time);
+    // }
+    FLOG_INFO("[REFRESH_SCHEMA ZIQIAN] fetch table with", K(sql));
+    FLOG_INFO("[REFRESH_SCHEMA ZIQIAN] fetch tables cost",
+              KR(ret), K(tenant_id), "cost", ObTimeUtility::current_time() - start_time);
+    
   }
   if (OB_SUCC(ret)) {
     ObArray<uint64_t> table_ids;
@@ -4641,21 +4668,56 @@ int ObSchemaServiceSQLImpl::gen_fetch_tables_sql(
     LOG_WARN("get value failed", K(ret), K(fetch_tables_plan));
   } else if (OB_FAIL(fetch_tables_plan_obj.get_int(fetch_tables_plan))) {
     LOG_WARN("get int failed", K(ret));
-  }
+  } 
   FLOG_INFO("[ZIQIAN]", K(fetch_tables_plan));
 
-  if (OB_FAIL(sql.append_fmt(FETCH_ALL_TABLE_HISTORY_SQL3,
-                             table_name,
-                             fill_extract_tenant_id(schema_status, tenant_id)))) {
-    LOG_WARN("append sql failed", K(ret));
-  } else if (OB_FAIL(sql.append_fmt(" AND SCHEMA_VERSION <= %ld", schema_version))) {
-    LOG_WARN("append sql failed", K(ret));
-  } else if (OB_FAIL(sql.append_fmt(" AND table_id in"))) {
-    LOG_WARN("append failed", K(ret));
-  } else if (OB_FAIL(SQL_APPEND_SCHEMA_ID(table, schema_keys, schema_key_size, sql))) {
-    LOG_WARN("sql append table id failed", K(ret));
+  if (OB_SUCC(ret)) {
+    if (0 == fetch_tables_plan) { // SCAN
+      if (OB_FAIL(sql.append_fmt(FETCH_ALL_TABLE_HISTORY_SQL3,
+                                table_name,
+                                fill_extract_tenant_id(schema_status, tenant_id)))) {
+        LOG_WARN("append sql failed", K(ret));
+      } else if (OB_FAIL(sql.append_fmt(" AND SCHEMA_VERSION <= %ld", schema_version))) {
+        LOG_WARN("append sql failed", K(ret));
+      } else if (OB_FAIL(sql.append_fmt(" AND table_id in"))) {
+        LOG_WARN("append failed", K(ret));
+      } else if (OB_FAIL(SQL_APPEND_SCHEMA_ID(table, schema_keys, schema_key_size, sql))) {
+        LOG_WARN("sql append table id failed", K(ret));
+      }
+    } else if (1 == fetch_tables_plan) { // JOIN
+      if (OB_FAIL(sql.append_fmt("SELECT a.* FROM %s AS a JOIN (",
+                                 table_name))) {
+        LOG_WARN("append sql failed", K(ret));
+      } else if (OB_FAIL(sql.append_fmt("SELECT tenant_id, table_id, MAX(schema_version) AS schema_version FROM %s", table_name))) {
+        LOG_WARN("append sql failed", K(ret));
+      } else if (OB_FAIL(sql.append_fmt(" WHERE tenant_id = %lu", fill_extract_tenant_id(schema_status, tenant_id)))) {
+        LOG_WARN("append sql failed", K(ret));
+      } else if (OB_FAIL(sql.append_fmt(" AND schema_version <= %ld", schema_version))) {
+        LOG_WARN("append sql failed", K(ret));
+      } else if (OB_FAIL(sql.append_fmt(" AND table_id IN"))) {
+        LOG_WARN("sql append table id failed", K(ret));
+      } else if (OB_FAIL(SQL_APPEND_SCHEMA_ID(table, schema_keys, schema_key_size, sql))) {
+        LOG_WARN("append sql failed", K(ret));
+      } else if (OB_FAIL(sql.append_fmt(" GROUP BY tenant_id, table_id) AS b"))) {
+        LOG_WARN("append sql failed", K(ret));
+      } else if (OB_FAIL(sql.append_fmt(" ON a.tenant_id = b.tenant_id AND a.table_id = b.table_id AND a.schema_version = b.schema_version"))) {
+        LOG_WARN("append sql failed", K(ret));
+      }      
+    } else if (2 == fetch_tables_plan) { // GET
+      if (OB_FAIL(sql.append_fmt(FETCH_ALL_TABLE_HISTORY_SQL3,
+                                table_name,
+                                fill_extract_tenant_id(schema_status, tenant_id)))) {
+        LOG_WARN("append sql failed", K(ret));
+      } else if (OB_FAIL(sql.append_fmt(" AND (table_id, schema_version) in"))) {
+        LOG_WARN("append failed", K(ret));
+      } else if (OB_FAIL(SQL_APPEND_TABLE_ID_AND_SCHEMA_VERSION(schema_keys, schema_key_size, sql))) {
+        LOG_WARN("sql append table id failed", K(ret));
+      }
+    } else {
+      ret = OB_ERR_UNEXPECTED;
+      LOG_WARN("unknodwn fetch_tables_plan", K(ret), K(fetch_tables_plan));
+    }    
   }
-
   return ret;
 }
 
