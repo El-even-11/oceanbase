@@ -308,6 +308,7 @@ int ObUpgradeExecutor::execute(
     LOG_WARN("fail to set execute mark", KR(ret));
   } else {
     int64_t job_id = OB_INVALID_ID;
+    ObString tenant_name;
     ObString extra_info;
     char extra_buf[common::MAX_ROOTSERVICE_EVENT_EXTRA_INFO_LENGTH] = {0};
     int64_t len = 0;
@@ -316,15 +317,18 @@ int ObUpgradeExecutor::execute(
             extra_buf, common::OB_CLUSTER_VERSION_LENGTH, version);
     }
     extra_info.assign_ptr(extra_buf, len);
-    if (OB_FAIL(RS_JOB_CREATE_WITH_RET(job_id, job_type, *sql_proxy_,
-                                       "tenant_id", 0,
-                                       "extra_info", extra_buf))) {
+    if (OB_FAIL(construct_tenant_ids_(arg.tenant_ids_, tenant_ids))) {
+      LOG_WARN("fail to construct tenant_ids", KR(ret), K(arg));
+    } else if (OB_FAIL(construct_tenant_name_(tenant_ids, tenant_name))) {
+      LOG_WARN("fail to construct tenant_names", KR(ret), K(arg));
+    } else if (RS_JOB_CREATE_WITH_RET(job_id, job_type, *sql_proxy_,
+                                      "tenant_id", 1 == tenant_ids.count() ? tenant_ids.at(0) : 0,
+                                      "tenant_name", tenant_name,
+                                      "extra_info", extra_buf)) {
       LOG_WARN("fail to create rs job", KR(ret));
     } else if (job_id <= 0) {
       ret = OB_ERR_UNEXPECTED;
       LOG_WARN("job_id is invalid", KR(ret), K(job_id));
-    } else if (OB_FAIL(construct_tenant_ids_(arg.tenant_ids_, tenant_ids))) {
-      LOG_WARN("fail to construct tenant_ids", KR(ret), K(arg));
     } else {
       switch (action) {
         case obrpc::ObUpgradeJobArg::UPGRADE_POST_ACTION: {
@@ -1229,6 +1233,31 @@ int ObUpgradeExecutor::construct_tenant_ids_(
         LOG_WARN("fail to push back tenant_id", KR(ret), K(tenant_id));
       }
     } // end for
+  }
+  return ret;
+}
+
+int ObUpgradeExecutor::construct_tenant_name_(
+    const common::ObIArray<uint64_t> &tenant_ids,
+    common::ObString &tenant_names)
+{
+  int ret = OB_SUCCESS;
+  ObSchemaGetterGuard schema_guard;
+  tenant_names.reset();
+  if (OB_FAIL(check_inner_stat_())) {
+    LOG_WARN("fail to check inner stat", KR(ret));
+  } else if (1 != tenant_ids.count()) {
+    // skip
+  } else if (OB_FAIL(schema_service_->get_tenant_schema_guard(OB_SYS_TENANT_ID, schema_guard))) {
+    LOG_WARN("fail to get tenant schema guard", K(ret));
+  } else {
+    const uint64_t tenant_id = tenant_ids.at(0);
+    const ObSimpleTenantSchema *tenant_schema = NULL;
+    if (OB_FAIL(schema_guard.get_tenant_info(tenant_id, tenant_schema))) {
+      LOG_WARN("fail to get tenant info", K(ret), K(tenant_id));
+    } else {
+      tenant_names = tenant_schema->get_tenant_name_str();
+    }
   }
   return ret;
 }
