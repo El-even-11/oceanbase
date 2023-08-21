@@ -35,6 +35,7 @@
 #include "share/ob_cluster_version.h"
 #include "share/ob_upgrade_utils.h"
 #include "share/ob_share_util.h" // ObShareUtil
+#include "share/ob_version.h"
 #include "storage/ob_file_system_router.h"
 #include "observer/ob_server_struct.h"
 #include "observer/omt/ob_tenant_config_mgr.h"
@@ -1429,6 +1430,8 @@ int ObAdminUpgradeCmd::execute(const Bool &upgrade)
     set_config_arg.is_inner_ = true;
     const char *enable_upgrade_name = "enable_upgrade_mode";
     ObAdminSetConfig admin_set_config(ctx_);
+    char build_version[OB_SERVER_VERSION_LENGTH] = {'\0'};
+    get_package_and_svn(build_version, sizeof(build_version));
     char min_server_version[OB_SERVER_VERSION_LENGTH] = {'\0'};
     uint64_t cluster_version = GET_MIN_CLUSTER_VERSION();
 
@@ -1460,7 +1463,8 @@ int ObAdminUpgradeCmd::execute(const Bool &upgrade)
     } else {
       CLUSTER_EVENT_SYNC_ADD("UPGRADE",
                              upgrade ? "BEGIN_UPGRADE" : "END_UPGRADE",
-                             "cluster_version", min_server_version);
+                             "cluster_version", min_server_version,
+                             "build_version", build_version);
       LOG_INFO("change upgrade parameters",
                "enable_upgrade_mode", upgrade,
                "in_major_version_upgrade_mode", GCONF.in_major_version_upgrade_mode());
@@ -1478,6 +1482,8 @@ int ObAdminRollingUpgradeCmd::execute(const obrpc::ObAdminRollingUpgradeArg &arg
     set_config_arg.is_inner_ = true;
     const char *upgrade_stage_name = "_upgrade_stage";
     ObAdminSetConfig admin_set_config(ctx_);
+    char build_version[OB_SERVER_VERSION_LENGTH] = {'\0'};
+    get_package_and_svn(build_version, sizeof(build_version));
     char ori_min_server_version[OB_SERVER_VERSION_LENGTH] = {'\0'};
     char min_server_version[OB_SERVER_VERSION_LENGTH] = {'\0'};
     uint64_t ori_cluster_version = GET_MIN_CLUSTER_VERSION();
@@ -1515,10 +1521,12 @@ int ObAdminRollingUpgradeCmd::execute(const obrpc::ObAdminRollingUpgradeArg &arg
     } else {
       if (obrpc::OB_UPGRADE_STAGE_POSTUPGRADE != arg.stage_) {
         CLUSTER_EVENT_SYNC_ADD("UPGRADE", "BEGIN_ROLLING_UPGRADE",
-                               "cluster_version", ori_min_server_version);
+                               "cluster_version", ori_min_server_version,
+                               "build_version", build_version);
       } else {
         CLUSTER_EVENT_SYNC_ADD("UPGRADE", "END_ROLLING_UPGRADE",
                                "cluster_version", min_server_version,
+                               "build_version", build_version,
                                "ori_cluster_version", ori_min_server_version);
       }
       LOG_INFO("change upgrade parameters", KR(ret), "_upgrade_stage", arg.stage_);

@@ -19,6 +19,7 @@
 #include "share/ob_cluster_event_history_table_operator.h"//CLUSTER_EVENT_INSTANCE
 #include "share/ob_primary_standby_service.h" // ObPrimaryStandbyService
 #include "share/ob_tenant_info_proxy.h" //ObAllTenantInfoProxy
+#include "share/ob_version.h"
 
 namespace oceanbase
 {
@@ -400,6 +401,8 @@ int ObUpgradeExecutor::execute(
     }
 
     if (OB_SUCC(ret)) {
+      char build_version[OB_SERVER_VERSION_LENGTH] = {'\0'};
+      get_package_and_svn(build_version, sizeof(build_version));
       char ori_min_server_version[OB_SERVER_VERSION_LENGTH] = {'\0'};
       uint64_t ori_cluster_version = GET_MIN_CLUSTER_VERSION();
       if (OB_INVALID_INDEX == ObClusterVersion::print_version_str(
@@ -409,7 +412,8 @@ int ObUpgradeExecutor::execute(
       } else {
         CLUSTER_EVENT_SYNC_ADD("UPGRADE",
                                ObRsJobTableOperator::get_job_type_str(job_type),
-                               "cluster_version", ori_min_server_version);
+                               "cluster_version", ori_min_server_version,
+                               "build_version", build_version);
       }
     }
 
@@ -1239,11 +1243,11 @@ int ObUpgradeExecutor::construct_tenant_ids_(
 
 int ObUpgradeExecutor::construct_tenant_name_(
     const common::ObIArray<uint64_t> &tenant_ids,
-    common::ObString &tenant_names)
+    common::ObString &tenant_name)
 {
   int ret = OB_SUCCESS;
   ObSchemaGetterGuard schema_guard;
-  tenant_names.reset();
+  tenant_name.reset();
   if (OB_FAIL(check_inner_stat_())) {
     LOG_WARN("fail to check inner stat", KR(ret));
   } else if (1 != tenant_ids.count()) {
@@ -1256,7 +1260,7 @@ int ObUpgradeExecutor::construct_tenant_name_(
     if (OB_FAIL(schema_guard.get_tenant_info(tenant_id, tenant_schema))) {
       LOG_WARN("fail to get tenant info", K(ret), K(tenant_id));
     } else {
-      tenant_names = tenant_schema->get_tenant_name_str();
+      tenant_name = tenant_schema->get_tenant_name_str();
     }
   }
   return ret;

@@ -1990,6 +1990,8 @@ int ObRootService::execute_bootstrap(const obrpc::ObBootstrapArg &arg)
     }
 
     if (OB_SUCC(ret)) {
+      char build_version[OB_SERVER_VERSION_LENGTH] = {'\0'};
+      get_package_and_svn(build_version, sizeof(build_version));
       char ori_min_server_version[OB_SERVER_VERSION_LENGTH] = {'\0'};
       uint64_t ori_cluster_version = GET_MIN_CLUSTER_VERSION();
       if (OB_INVALID_INDEX == ObClusterVersion::print_version_str(
@@ -1998,7 +2000,8 @@ int ObRootService::execute_bootstrap(const obrpc::ObBootstrapArg &arg)
          LOG_WARN("fail to print version str", KR(ret), K(ori_cluster_version));
       } else {
         CLUSTER_EVENT_SYNC_ADD("BOOTSTRAP", "BOOTSTRAP_SUCCESS",
-                               "cluster_version", ori_min_server_version);
+                               "cluster_version", ori_min_server_version,
+                               "build_version", build_version);
       }
     }
 

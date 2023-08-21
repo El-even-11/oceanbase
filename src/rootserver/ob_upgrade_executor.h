@@ -105,7 +105,7 @@ private:
       common::ObIArray<uint64_t> &dst_tenant_ids);
   int construct_tenant_name_(
       const common::ObIArray<uint64_t> &tenant_ids,
-      common::ObString &tenant_names);
+      common::ObString &tenant_name);
   rootserver::ObRsJobType convert_to_job_type_(
       const obrpc::ObUpgradeJobArg::Action &action);
 private:
