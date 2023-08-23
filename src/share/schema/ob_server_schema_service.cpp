@@ -6614,26 +6614,32 @@ int ObServerSchemaService::check_table_schema_version_matched(
   const ObIArray<const ObTableSchema *> &table_schemas)
 {
   int ret = OB_SUCCESS;
-  ObHashMap<uint64_t, int64_t> schema_version_map;
-  FOREACH_X(key, table_keys, OB_SUCC(ret)) {
-    const uint64_t table_id = key->first.get_table_key().table_id_;
-    const int64_t schema_version = key->first.schema_version_;
-    if (OB_FAIL(schema_version_map.set_refactored(table_id, schema_version))) {
-      LOG_WARN("fail to build schema version map", K(ret));
+  if (0 == table_keys.size()) {
+    // skip
+  } else {
+    ObHashMap<uint64_t, int64_t> schema_version_map;
+    schema_version_map.create(table_keys.size(), ObModIds::OB_TMP_MAP);
+    FOREACH_X(key, table_keys, OB_SUCC(ret)) {
+      const uint64_t table_id = key->first.get_table_key().table_id_;
+      const int64_t schema_version = key->first.schema_version_;
+      if (OB_FAIL(schema_version_map.set_refactored(table_id, schema_version))) {
+        LOG_WARN("fail to build schema version map", K(ret));
+      }
     }
+    for (int64_t i = 0; OB_SUCC(ret) && i < table_schemas.count(); i++) {
+      const ObTableSchema *table_schema = table_schemas.at(i);
+      const uint64_t table_id = table_schema->get_table_id();
+      const uint64_t history_schema_version = table_schema->get_schema_version();
+      int64_t ddl_schema_version = OB_INVALID_VERSION;
+      if (OB_FAIL(schema_version_map.get_refactored(table_id, ddl_schema_version))) {
+        LOG_WARN("fail to get ddl schema version", K(ret), K(table_id));
+      } else if (history_schema_version != ddl_schema_version) {
+        ret = OB_STATE_NOT_MATCH;
+        LOG_WARN("__all_table_history and __all_ddl_operation schema version mismatch", K(ret));
+      }
+    }    
   }
-  for (int64_t i = 0; OB_SUCC(ret) && i < table_schemas.count(); i++) {
-    const ObTableSchema *table_schema = table_schemas.at(i);
-    const uint64_t table_id = table_schema->get_table_id();
-    const uint64_t history_schema_version = table_schema->get_schema_version();
-    int64_t ddl_schema_version = OB_INVALID_VERSION;
-    if (OB_FAIL(schema_version_map.get_refactored(table_id, ddl_schema_version))) {
-      LOG_WARN("fail to get ddl schema version", K(ret), K(table_id));
-    } else if (history_schema_version != ddl_schema_version) {
-      ret = OB_STATE_NOT_MATCH;
-      LOG_WARN("__all_table_history and __all_ddl_operation schema version mismatch", K(ret));
-    }
-  }
+
   if (OB_SUCC(ret)) {
     FLOG_INFO("[ZIQIAN] schema version matched!");
   }
