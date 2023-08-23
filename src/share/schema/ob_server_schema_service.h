@@ -1138,6 +1138,8 @@ private:
   int add_index_tids(const ObSchemaMgr &schema_mgr,
                      ObTableSchema &table);
   int extract_non_sys_table_ids_(const TableKeys &keys, common::ObIArray<uint64_t> &non_sys_table_ids);
+  int check_table_schema_version_matched(const TableKeys &table_keys,
+                                         const common::ObIArray<const ObTableSchema *> &table_schemas);
 protected:
   virtual int update_schema_cache(common::ObIArray<ObTableSchema*> &schema_array) = 0;
   virtual int update_schema_cache(common::ObIArray<ObTableSchema> &schema_array) = 0;
