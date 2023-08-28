@@ -6614,6 +6614,7 @@ int ObServerSchemaService::check_table_schema_version_matched(
   const ObIArray<const ObTableSchema *> &table_schemas)
 {
   int ret = OB_SUCCESS;
+  int64_t start_time = ObTimeUtility::current_time();
   if (0 == table_keys.size()) {
     // skip
   } else {
@@ -6642,6 +6643,7 @@ int ObServerSchemaService::check_table_schema_version_matched(
 
   if (OB_SUCC(ret)) {
     FLOG_INFO("[ZIQIAN] schema version matched!");
+    FLOG_INFO("[ZIQIAN] check schema version macthed cost", "cost", ObTimeUtility::current_time() - start_time);
   }
   return ret;
 }

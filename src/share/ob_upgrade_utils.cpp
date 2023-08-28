@@ -1131,6 +1131,11 @@ int ObUpgradeFor4200Processor::post_upgrade_for_heartbeat_and_server_zone_op_ser
 
 /* =========== 4200 upgrade processor end ============= */
 
+int ObUpgradeFor4210Processor::post_upgrade()
+{
+  int ret = OB_SUCCESS;
+  return ret;
+}
 
 /* =========== special upgrade processor end   ============= */
 } // end share

@@ -37,7 +37,8 @@ int ObGlobalStatProxy::set_init_value(
     const int64_t gc_schema_version,
     const int64_t ddl_epoch,
     const uint64_t target_data_version,
-    const uint64_t current_data_version)
+    const uint64_t current_data_version,
+    const int64_t match_schema_version)
 {
   int ret = OB_SUCCESS;
   if (!is_valid() || core_schema_version <= 0 || baseline_schema_version < -1
@@ -57,6 +58,7 @@ int ObGlobalStatProxy::set_init_value(
     ObGlobalStatItem ddl_epoch_item(list, "ddl_epoch", ddl_epoch);
     ObGlobalStatItem target_data_version_item(list, "target_data_version", static_cast<int64_t>(target_data_version));
     ObGlobalStatItem current_data_version_item(list, "current_data_version", static_cast<int64_t>(current_data_version));
+    ObGlobalStatItem match_schema_version_item(list, "match_schema_version", match_schema_version);
 
     if (OB_FAIL(update(list))) {
       LOG_WARN("update failed", KR(ret), K(list));
@@ -71,7 +73,8 @@ int ObGlobalStatProxy::set_tenant_init_global_stat(
     const SCN &snapshot_gc_scn,
     const int64_t ddl_epoch,
     const uint64_t target_data_version,
-    const uint64_t current_data_version)
+    const uint64_t current_data_version,
+    const int64_t match_schema_version)
 {
   int ret = OB_SUCCESS;
   if (!is_valid() || core_schema_version <= 0
@@ -91,6 +94,7 @@ int ObGlobalStatProxy::set_tenant_init_global_stat(
     ObGlobalStatItem ddl_epoch_item(list, "ddl_epoch", ddl_epoch);
     ObGlobalStatItem target_data_version_item(list, "target_data_version", static_cast<int64_t>(target_data_version));
     ObGlobalStatItem current_data_version_item(list, "current_data_version", static_cast<int64_t>(current_data_version));
+    ObGlobalStatItem match_schema_version_item(list, "match_schema_version", match_schema_version);
     // only Normal state tenant can refresh snapshot_gc_scn
     ObGlobalStatItem snapshot_gc_scn_item(list, "snapshot_gc_scn", snapshot_gc_scn.get_val_for_inner_table_field());
     if (OB_FAIL(update(list))) {

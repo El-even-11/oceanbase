@@ -209,7 +209,14 @@ private:
   int post_upgrade_for_heartbeat_and_server_zone_op_service();
 };
 
-DEF_SIMPLE_UPGRARD_PROCESSER(4, 2, 1, 0)
+class ObUpgradeFor4210Processor : public ObBaseUpgradeProcessor
+{
+public:
+  ObUpgradeFor4210Processor() : ObBaseUpgradeProcessor() {}
+  virtual ~ObUpgradeFor4210Processor() {}
+  virtual int pre_upgrade() override { return common::OB_SUCCESS; }
+  virtual int post_upgrade() override;
+};
 /* =========== special upgrade processor end   ============= */
 
 /* =========== upgrade processor end ============= */

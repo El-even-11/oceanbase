@@ -54,14 +54,16 @@ public:
                              const int64_t gc_schema_version,
 			                       const int64_t ddl_epoch,
                              const uint64_t target_data_version,
-                             const uint64_t current_data_version);
+                             const uint64_t current_data_version,
+                             const int64_t match_schema_version);
 
   virtual int set_tenant_init_global_stat(const int64_t core_schema_version,
                                           const int64_t baseline_schema_version,
                                           const SCN &snapshot_gc_scn,
                                           const int64_t ddl_epoch,
                                           const uint64_t target_data_version,
-                                          const uint64_t current_data_version);
+                                          const uint64_t current_data_version,
+                                          const int64_t match_schema_version);
 
   virtual int set_core_schema_version(const int64_t core_schema_version);
   virtual int set_baseline_schema_version(const int64_t baseline_schema_version);

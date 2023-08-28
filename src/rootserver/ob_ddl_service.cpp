@@ -22185,6 +22185,7 @@ int ObDDLService::init_tenant_schema(
       const SCN snapshot_gc_scn  = SCN::min_scn();
       // find compatible version
       uint64_t data_version = 0;
+      const int64_t match_schema_version = 0;
       for (int64_t i = 0; OB_SUCC(ret) && i < init_configs.count(); i++) {
         const ObConfigPairs &config = init_configs.at(i);
         if (tenant_id == config.get_tenant_id()) {
@@ -22210,7 +22211,7 @@ int ObDDLService::init_tenant_schema(
           LOG_WARN("compatible version not defined", KR(ret), K(tenant_id), K(init_configs));
         } else if (OB_FAIL(global_stat_proxy.set_tenant_init_global_stat(
                   core_schema_version, baseline_schema_version,
-                  snapshot_gc_scn, ddl_epoch, data_version, data_version))) {
+                  snapshot_gc_scn, ddl_epoch, data_version, data_version, match_schema_version))) {
           LOG_WARN("fail to set tenant init global stat", KR(ret), K(tenant_id),
                   K(core_schema_version), K(baseline_schema_version),
                   K(snapshot_gc_scn), K(ddl_epoch), K(data_version));

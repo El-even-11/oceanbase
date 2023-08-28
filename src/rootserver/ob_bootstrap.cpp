@@ -1187,6 +1187,7 @@ int ObBootstrap::init_global_stat()
     const SCN snapshot_gc_scn = SCN::min_scn();
     const int64_t snapshot_gc_timestamp = 0;
     const int64_t ddl_epoch = 0;
+    const int64_t match_schema_version = 0;
     ObGlobalStatProxy global_stat_proxy(trans, OB_SYS_TENANT_ID);
     ObSchemaStatusProxy *schema_status_proxy = GCTX.schema_status_proxy_;
     if (OB_FAIL(trans.start(&sql_proxy, OB_SYS_TENANT_ID))) {
@@ -1197,7 +1198,7 @@ int ObBootstrap::init_global_stat()
     } else if (OB_FAIL(global_stat_proxy.set_init_value(
                OB_CORE_SCHEMA_VERSION, baseline_schema_version,
                rootservice_epoch, snapshot_gc_scn, snapshot_gc_timestamp, ddl_epoch,
-               DATA_CURRENT_VERSION, DATA_CURRENT_VERSION))) {
+               DATA_CURRENT_VERSION, DATA_CURRENT_VERSION, match_schema_version))) {
       LOG_WARN("set_init_value failed", KR(ret), "schema_version", OB_CORE_SCHEMA_VERSION,
                K(baseline_schema_version), K(rootservice_epoch), K(ddl_epoch), "data_version", DATA_CURRENT_VERSION);
     }
