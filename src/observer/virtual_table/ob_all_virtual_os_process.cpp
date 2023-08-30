@@ -27,23 +27,53 @@ ObAllVirtualOSProcess::~ObAllVirtualOSProcess(){
 
 }
 
-int ObAllVirtualOSProcess::get_next_os_process_info(ObOsProcessInfo &process_info) 
+int ObAllVirtualOSProcess::get_next_os_process_info() 
 {
   int ret = OB_SUCCESS;
+  info_.reset();
   struct dirent *entry = NULL;
   int64_t pid = 0;
   while (OB_SUCC(ret) && pid == 0) {
     if (NULL == (entry = readdir(proc_dir_))) {
       ret = OB_ITER_END;
-    } else if (0 < (pid = atoi(entry->d_name))){
-      process_info.pid_ = pid;
+    } else if (0 < (pid = atoi(entry->d_name))) {
+      info_.pid_ = pid;
     }
   }
 
   if (OB_SUCC(ret)) {
-
+    char path[64];
+    snprintf(path, sizeof(path), "/proc/%ld/comm", pid);
+    FILE *file = NULL;
+    if (NULL == (file = fopen(path, "r"))) {
+      ret = OB_FILE_NOT_EXIST;
+      LOG_WARN("fail to open file", KR(ret), K(path));
+    } else if (NULL == fgets(info_.comm_, sizeof(info_.comm_), file)) {
+      ret = OB_ERR_UNEXPECTED;
+      LOG_WARN("fail to read file", KR(ret), K(path));
+    } else if (0 != fclose(file)) {
+      ret = OB_ERR_UNEXPECTED;
+      LOG_WARN("fail to close file", KR(ret), K(path));
+    } else {
+      info_.comm_[strcspn(info_.comm_, "\n")] = '\0';
+    }
   }
-
+  
+  if (OB_SUCC(ret)) {
+    char path[64];
+    snprintf(path, sizeof(path), "/proc/%ld/cmdline", pid);
+    FILE *file = NULL;
+    if (NULL == (file = fopen(path, "r"))) {
+      ret = OB_FILE_NOT_EXIST;
+      LOG_WARN("fail to open file", KR(ret), K(path));
+    } else if (FALSE_IT(fgets(info_.cmd_, sizeof(info_.cmd_), file))) {
+    } else if (0 != fclose(file)) {
+      ret = OB_ERR_UNEXPECTED;
+      LOG_WARN("fail to close file", KR(ret), K(path));
+    } else {
+      info_.cmd_[strcspn(info_.cmd_, "\n")] = '\0';
+    }
+  }
   return ret;
 }
 
@@ -65,11 +95,10 @@ int ObAllVirtualOSProcess::inner_open()
 int ObAllVirtualOSProcess::inner_get_next_row(ObNewRow *&row)
 {
   int ret = OB_SUCCESS;
-  ObOsProcessInfo info;
 
-  if (OB_FAIL(get_next_os_process_info(info))) {
-    if (OB_ITER_END != ret) {
-      LOG_WARN("fail to get next os process info", KR(ret));
+  while (OB_FAIL(get_next_os_process_info())) {
+    if (OB_ITER_END == ret) {
+      break;
     }
   }
 
@@ -85,26 +114,15 @@ int ObAllVirtualOSProcess::inner_get_next_row(ObNewRow *&row)
         case SVR_PORT:
           cur_row_.cells_[i].set_int(static_cast<int64_t>(GCTX.self_addr().get_port()));
           break;
-        case USER:
-          cur_row_.cells_[i].set_varchar(info.user_);
-          break;
         case PID:
-          cur_row_.cells_[i].set_int(info.pid_);
+          cur_row_.cells_[i].set_int(info_.pid_);
           break;
-        case CPU:
-          cur_row_.cells_[i].set_int(info.cpu_);
-          break;
-        case MEM:
-          cur_row_.cells_[i].set_int(info.mem_);
-          break;
-        case VSZ:
-          cur_row_.cells_[i].set_int(info.vsz_);
-          break;
-        case RSS:
-          cur_row_.cells_[i].set_int(info.rss_);
+        case COMM:
+          cur_row_.cells_[i].set_varchar(ObString::make_string(info_.comm_));
+          cur_row_.cells_[i].set_collation_type(ObCharset::get_default_collation(ObCharset::get_default_charset()));
           break;
         case CMD:
-          cur_row_.cells_[i].set_varchar(info.cmd_);
+          cur_row_.cells_[i].set_varchar(ObString::make_string(info_.cmd_));
           cur_row_.cells_[i].set_collation_type(ObCharset::get_default_collation(ObCharset::get_default_charset()));
           break;
         default: {

@@ -2984,11 +2984,8 @@ const char *const OB_ALL_VIRTUAL_WR_CONTROL_TNAME = "__all_virtual_wr_control";
 const char *const OB_ALL_VIRTUAL_TENANT_EVENT_HISTORY_TNAME = "__all_virtual_tenant_event_history";
 const char *const OB_ALL_VIRTUAL_BALANCE_TASK_HELPER_TNAME = "__all_virtual_balance_task_helper";
 const char *const OB_ALL_VIRTUAL_BALANCE_GROUP_LS_STAT_TNAME = "__all_virtual_balance_group_ls_stat";
-<<<<<<< HEAD
 const char *const OB_ALL_VIRTUAL_FLT_CONFIG_TNAME = "__all_virtual_flt_config";
-=======
 const char *const OB_ALL_VIRTUAL_OS_PROCESS_TNAME = "__all_virtual_os_process";
->>>>>>> feat: add __all_virtual_os_process
 const char *const OB_ALL_VIRTUAL_SQL_AUDIT_ORA_TNAME = "ALL_VIRTUAL_SQL_AUDIT";
 const char *const OB_ALL_VIRTUAL_PLAN_STAT_ORA_TNAME = "ALL_VIRTUAL_PLAN_STAT";
 const char *const OB_ALL_VIRTUAL_PLAN_CACHE_PLAN_EXPLAIN_ORA_TNAME = "ALL_VIRTUAL_PLAN_CACHE_PLAN_EXPLAIN";

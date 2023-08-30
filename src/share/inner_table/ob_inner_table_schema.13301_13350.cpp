@@ -90,21 +90,6 @@ int ObInnerTableSchema::all_virtual_os_process_schema(ObTableSchema &table_schem
   }
 
   if (OB_SUCC(ret)) {
-    ADD_COLUMN_SCHEMA("user", //column_name
-      ++column_id, //column_id
-      0, //rowkey_id
-      0, //index_id
-      0, //part_key_pos
-      ObVarcharType, //column_type
-      CS_TYPE_INVALID, //column_collation_type
-      64, //column_length
-      -1, //column_precision
-      -1, //column_scale
-      false, //is_nullable
-      false); //is_autoincrement
-  }
-
-  if (OB_SUCC(ret)) {
     ADD_COLUMN_SCHEMA("pid", //column_name
       ++column_id, //column_id
       0, //rowkey_id
@@ -120,59 +105,14 @@ int ObInnerTableSchema::all_virtual_os_process_schema(ObTableSchema &table_schem
   }
 
   if (OB_SUCC(ret)) {
-    ADD_COLUMN_SCHEMA("cpu", //column_name
+    ADD_COLUMN_SCHEMA("comm", //column_name
       ++column_id, //column_id
       0, //rowkey_id
       0, //index_id
       0, //part_key_pos
-      ObIntType, //column_type
+      ObVarcharType, //column_type
       CS_TYPE_INVALID, //column_collation_type
-      sizeof(int64_t), //column_length
-      -1, //column_precision
-      -1, //column_scale
-      false, //is_nullable
-      false); //is_autoincrement
-  }
-
-  if (OB_SUCC(ret)) {
-    ADD_COLUMN_SCHEMA("mem", //column_name
-      ++column_id, //column_id
-      0, //rowkey_id
-      0, //index_id
-      0, //part_key_pos
-      ObIntType, //column_type
-      CS_TYPE_INVALID, //column_collation_type
-      sizeof(int64_t), //column_length
-      -1, //column_precision
-      -1, //column_scale
-      false, //is_nullable
-      false); //is_autoincrement
-  }
-
-  if (OB_SUCC(ret)) {
-    ADD_COLUMN_SCHEMA("vsz", //column_name
-      ++column_id, //column_id
-      0, //rowkey_id
-      0, //index_id
-      0, //part_key_pos
-      ObIntType, //column_type
-      CS_TYPE_INVALID, //column_collation_type
-      sizeof(int64_t), //column_length
-      -1, //column_precision
-      -1, //column_scale
-      false, //is_nullable
-      false); //is_autoincrement
-  }
-
-  if (OB_SUCC(ret)) {
-    ADD_COLUMN_SCHEMA("rss", //column_name
-      ++column_id, //column_id
-      0, //rowkey_id
-      0, //index_id
-      0, //part_key_pos
-      ObIntType, //column_type
-      CS_TYPE_INVALID, //column_collation_type
-      sizeof(int64_t), //column_length
+      64, //column_length
       -1, //column_precision
       -1, //column_scale
       false, //is_nullable

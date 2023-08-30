@@ -3259,8 +3259,8 @@ const schema_create_func virtual_table_schema_creators [] = {
   ObInnerTableSchema::all_virtual_balance_task_helper_schema,
   ObInnerTableSchema::all_virtual_balance_group_ls_stat_schema,
   ObInnerTableSchema::all_virtual_flt_config_schema,
-  ObInnerTableSchema::all_virtual_ash_all_virtual_ash_i1_schema,
   ObInnerTableSchema::all_virtual_os_process_schema,
+  ObInnerTableSchema::all_virtual_ash_all_virtual_ash_i1_schema,
   ObInnerTableSchema::all_virtual_sql_plan_monitor_all_virtual_sql_plan_monitor_i1_schema,
   ObInnerTableSchema::all_virtual_sql_audit_all_virtual_sql_audit_i1_schema,
   ObInnerTableSchema::all_virtual_sysstat_all_virtual_sysstat_i1_schema,
@@ -11123,12 +11123,11 @@ static inline int get_sys_table_lob_aux_schema(const uint64_t tid,
 
 const int64_t OB_CORE_TABLE_COUNT = 4;
 const int64_t OB_SYS_TABLE_COUNT = 247;
-const int64_t OB_VIRTUAL_TABLE_COUNT = 715;
+const int64_t OB_VIRTUAL_TABLE_COUNT = 716;
 const int64_t OB_SYS_VIEW_COUNT = 757;
-const int64_t OB_SYS_TENANT_TABLE_COUNT = 1724;
+const int64_t OB_SYS_TENANT_TABLE_COUNT = 1725;
 const int64_t OB_CORE_SCHEMA_VERSION = 1;
-const int64_t OB_BOOTSTRAP_SCHEMA_VERSION = 1727;
-
+const int64_t OB_BOOTSTRAP_SCHEMA_VERSION = 1728;
 
 } // end namespace share
 } // end namespace oceanbase

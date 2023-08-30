@@ -12517,13 +12517,9 @@ def_table_schema(
   normal_columns = [
     ('svr_ip', 'varchar:MAX_IP_ADDR_LENGTH'),
     ('svr_port', 'int'),
-    ('user', 'varchar:64'),
     ('pid', 'int'),
-    ('cpu', 'int'),
-    ('mem', 'int'),
-    ('vsz', 'int'),
-    ('rss', 'int'),
-    ('cmd', 'varchar:1024'),
+    ('comm', 'varchar:64'),
+    ('cmd', 'varchar:1024')
   ],
   partition_columns = ['svr_ip', 'svr_port'],
   vtable_route_policy = 'distributed',

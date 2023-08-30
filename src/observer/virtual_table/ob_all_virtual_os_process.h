@@ -25,24 +25,22 @@ class ObAllVirtualOSProcess : public common::ObVirtualTableScannerIterator
   {
     SVR_IP = common::OB_APP_MIN_COLUMN_ID,
     SVR_PORT,
-    USER,
     PID,
-    CPU,
-    MEM,
-    VSZ,
-    RSS,
+    COMM,
     CMD,
   };
 private:
   struct ObOsProcessInfo
   {
-    ObString user_;
     int64_t pid_;
-    int64_t cpu_;
-    int64_t mem_;
-    int64_t vsz_;
-    int64_t rss_;
-    ObString cmd_;
+    char comm_[64];
+    char cmd_[1024];
+
+    void reset() {
+      pid_ = 0;
+      comm_[0] = '\0';
+      cmd_[0] = '\0';
+    }
   };
 
 public:
@@ -52,10 +50,11 @@ public:
   virtual int inner_open();
   virtual int inner_get_next_row(common::ObNewRow *&row);
 private:
-  int get_next_os_process_info(ObOsProcessInfo &process_info);
+  int get_next_os_process_info();
 private:
   char ip_buf_[OB_MAX_SERVER_ADDR_SIZE];
   DIR *proc_dir_;
+  ObOsProcessInfo info_;
 };
 
 }
