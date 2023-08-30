@@ -105,6 +105,8 @@ public:
                                                const uint64_t tenant_id,
                                                int64_t &ddl_epoch);
   int get_ddl_epoch(int64_t &ddl_epoch);
+  int set_match_schema_version(const int64_t match_schema_version);
+  int get_match_schema_version(int64_t &match_schema_version);
 private:
   static int inner_get_snapshot_gc_scn_(common::ObISQLClient &sql_client,
                                         const uint64_t tenant_id,

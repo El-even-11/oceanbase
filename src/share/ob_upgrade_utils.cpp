@@ -21,6 +21,7 @@
 #include "observer/ob_server_struct.h"
 #include "rootserver/ob_root_service.h"
 #include "sql/resolver/expr/ob_raw_expr_util.h"
+#include "share/ob_global_stat_proxy.h"
 #include "share/ob_rpc_struct.h"
 #include "share/ls/ob_ls_status_operator.h"//get max ls id
 #include "share/ob_tenant_info_proxy.h"//update max ls id
@@ -1134,6 +1135,17 @@ int ObUpgradeFor4200Processor::post_upgrade_for_heartbeat_and_server_zone_op_ser
 int ObUpgradeFor4210Processor::post_upgrade()
 {
   int ret = OB_SUCCESS;
+
+  ObRefreshSchemaStatus status;
+  status.tenant_id_ = tenant_id_;
+  int64_t schema_version = OB_INVALID_VERSION;
+  ObGlobalStatProxy global_stat_proxy(*sql_proxy_, tenant_id_);
+  if (OB_FAIL(schema_service_->get_schema_version_in_inner_table(*sql_proxy_, status, schema_version))) {
+    LOG_WARN("fail to get schema version in inner table", KR(ret));
+  } else if (OB_FAIL(global_stat_proxy.set_match_schema_version(schema_version))) {
+    LOG_WARN("fail to set match schema version", KR(ret));
+  }
+  
   return ret;
 }
 

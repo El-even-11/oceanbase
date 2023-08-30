@@ -4514,6 +4514,8 @@ int ObSchemaServiceSQLImpl::fetch_tables(
   const char *table_name = NULL;
   int64_t start_time = ObTimeUtility::current_time();
   int64_t inc_cnt = 0; // for reserved mem only
+  int64_t match_schema_version = OB_INVALID_VERSION;
+  ObGlobalStatProxy global_stat_proxy(*mysql_proxy_, tenant_id);
   if (!check_inner_stat()) {
     ret = OB_NOT_INIT;
     LOG_WARN("check inner stat fail", K(ret));
@@ -4563,6 +4565,10 @@ int ObSchemaServiceSQLImpl::fetch_tables(
         } else if (OB_FAIL(ObSchemaRetrieveUtils::retrieve_table_schema(
                    tenant_id, check_deleted, *result, allocator, schema_array))) {
           LOG_WARN("failed to retrieve table schema", K(ret));
+        } else if (OB_FAIL(global_stat_proxy.get_match_schema_version(match_schema_version))) {
+          LOG_WARN("fail to get match schema version", KR(ret));
+        } else if (min_schema_version < match_schema_version) {
+          LOG_INFO("uncompatiable with get fetch, try join");
         }
       }
     }
@@ -4652,6 +4658,7 @@ int ObSchemaServiceSQLImpl::gen_fetch_tables_sql(
   const ObSysVarSchema *sys_var_schema = NULL;
   ObObj fetch_tables_plan_obj;
   int64_t fetch_tables_plan = -1;
+  int64_t match_schema_version = OB_INVALID_VERSION;
   if (OB_ISNULL(GCTX.schema_service_)) {
     ret = OB_ERR_UNEXPECTED;
     LOG_WARN("schema service is null");
@@ -4715,8 +4722,8 @@ int ObSchemaServiceSQLImpl::gen_fetch_tables_sql(
       }
     } else {
       ret = OB_ERR_UNEXPECTED;
-      LOG_WARN("unknodwn fetch_tables_plan", K(ret), K(fetch_tables_plan));
-    }    
+      LOG_WARN("unknodwn fetch_tables_plan", K(ret), K(fetch_tables_plan));      
+    }
   }
   return ret;
 }

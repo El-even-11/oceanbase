@@ -654,5 +654,34 @@ int ObGlobalStatProxy::select_ddl_epoch_for_update(
   return ret;
 }
 
+int ObGlobalStatProxy::set_match_schema_version(const int64_t match_schema_version)
+{
+  int ret = OB_SUCCESS;
+  if (!is_valid() || match_schema_version < -1) {
+    ret = OB_INVALID_ARGUMENT;
+    LOG_WARN("invalid argument", K(ret), "self valid", is_valid(), K(match_schema_version));
+  } else {
+    bool is_incremental = true;
+    SET_ITEM("match_schema_version", match_schema_version, is_incremental);
+  }
+  return ret;
+}
+
+int ObGlobalStatProxy::get_match_schema_version(int64_t &match_schema_version)
+{
+  int ret = OB_SUCCESS;
+  ObGlobalStatItem::ItemList list;
+  ObGlobalStatItem match_schema_version_item(list, "match_schema_version", match_schema_version);
+  if (!is_valid()) {
+    ret = OB_INVALID_ARGUMENT;
+    LOG_WARN("invalid argument", K(ret), "self valid", is_valid());
+  } else if (OB_FAIL(get(list))) {
+    LOG_WARN("get failed", K(ret));
+  } else {
+    match_schema_version = match_schema_version_item.value_;
+  }
+  return ret;
+}
+
 }//end namespace share
 }//end namespace oceanbase
